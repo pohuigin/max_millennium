@@ -1,12 +1,16 @@
 ;make sunspot overlay images. if arposstr, a cut out centered on each AR will be created
 ;set OUTFILE to write PNGs of cutouts (e.g., '/Users/phiggins/data/magintoverlay_20130101') 
 ;	an AR number will be appended to each image name.
+;OUTARR = the file names of the images written
 pro mmmotd_sunspot_overlay,fmag,fint, $
-	outfile=outfile,arposstr=arposstr
+	outfile=outfile,arposstr=arposstr,verb=verb, outarr=outarr
+	
+if keyword_set(verb) then verb=1 else verb=0
 
 ;read in int and mag images
 mreadfits,fmag,mind,mdat
 mreadfits,fint,iind,idat
+if verb then help,mdat,idat
 
 ;Run AIA prep to co-align the two images
 aia_prep,iind,idat,piind,pidat 
@@ -47,13 +51,19 @@ for i=0,nars-1 do begin
 	sub_map,magmap,submagmap,xrange=[arhcpos[0]-300.,arhcpos[0]+300.],yrange=[arhcpos[1]-300.,arhcpos[1]+300.]
 	sub_map,intmap,subintmap,ref_map=submagmap
 	
+;	;set dynamic range of maps
+;	;set range to below that of named colors
+;	submagmap.data=bytscl(submagmap.data,min=-500,max=500)
+	
+	
 	;set up buffer plotting
 	if keyword_set(outfile) then begin
 		set_plot, 'z'
-		device, set_resolution = [1600,800]
+		resxy=[1600,800]
+		device, set_resolution = resxy;, /color
 		!p.background = 255
 		!p.color = 0
-		device,decomp=1
+		;device,decomp=1
 	endif
 	
 	;make plot
@@ -62,9 +72,11 @@ for i=0,nars-1 do begin
 	loadct,0
 	plot_map,submagmap,drange=[-500,500],/iso
 	
-	setcolors,/sys,/decomp
-	plot_map,subintmap,/over,level=threshpen,c_color=!red
-	plot_map,subintmap,/over,level=threshumb,c_color=!orange
+	setcolors,/sys;,/decomp
+	plot_map,subintmap,/over,level=threshpen,c_color=0,c_thick=3
+	plot_map,subintmap,/over,level=threshumb,c_color=0,c_thick=3
+	plot_map,subintmap,/over,level=threshpen,c_color=255
+	plot_map,subintmap,/over,level=threshumb,c_color=255
 
 	!p.multi=[1,2,1]
 	loadct,0
@@ -73,11 +85,20 @@ for i=0,nars-1 do begin
 	
 	;write the buffer to an image
 	if keyword_set(outfile) then begin
+;;		tvlct,rr,gg,bb,/get
+;;		zb_plot=tvrd(true=1)
+;		zb1=bytscl(tvrd(channel=1,/words)) & zb2=bytscl(tvrd(channel=2,/words)) & zb3=bytscl(tvrd(channel=3,/words))
+;		zb_plot=bytarr(3,resxy[0],resxy[1])
+;		zb_plot[0,*,*]=zb1 & zb_plot[1,*,*]=zb2 & zb_plot[2,*,*]=zb3
+;		write_png, outfile+'_'+strtrim(arposstr[i].ars,2)+'.png', zb_plot;, rr,gg,bb
 		zb_plot = tvrd()
+		thisimg=outfile+'_'+strtrim(arposstr[i].ars,2)+'.png'
+		wr_png, thisimg, zb_plot
 		set_plot, 'x'
-		wr_png, outfile+'_'+strtrim(arposstr[i].ars,2)+'.png', zb_plot
-	endif
+		if n_elements(outarr) lt 1 then outarr=thisimg else outarr=[outarr,thisimg]
+	endif else stop
 
+	
 endfor
 
 end
