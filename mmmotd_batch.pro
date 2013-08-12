@@ -12,21 +12,32 @@ if keyword_set(debug) then begin
 endif else debug=0
 
 ;Get environment variables
-spawn,'echo $WORKING_PATH',pathworking
-spawn,'echo $TEMP_PATH',pathtemp
-spawn,'echo $OUTPUT_PATH',pathoutput
-spawn,'echo $todays_date',envdate
+;spawn,'echo $WORKING_PATH',pathworking,/sh
+pathworking = getenv('WORKING_PATH')
+;spawn,'echo $TEMP_PATH',pathtemp,/sh
+pathtemp = getenv('TEMP_PATH')
+;spawn,'echo $OUTPUT_PATH',pathoutput,/sh
+pathoutput = getenv('OUTPUT_PATH')
+;spawn,'echo $todays_date',envdate,/sh
+
+pathlmsal='/sanhome/higgins/public_html/max_millennium/sunspot_overlays/'
+envdate = getenv('todays_date')
+
+print, 'Images will be output to: '+pathoutput
+print, 'And copied to: '+pathlmsal
 
 ;Get intensitygram
-fint=pathtemp+'fint.fits'
+;fint=pathtemp+'fint.fits'
 fintremote='http://sdowww.lmsal.com/sdomedia/SunInTime/mostrecent/f4500.fits'
+fint='/viz2/media/SunInTime/mostrecent/f4500.fits' ;'/archive/sdo/media/SunInTime/mostrecent/f4500.fits'
 ;spawn,'curl '+fintremote+' -o '+fint
 ;spawn,'&/Users/phiggins/bin/wget/src/wget '+fintremote+' -O '+fint
 ;wait,600
 
 ;Get magnetogram
-fmag=pathtemp+'fmag.fits'
+;fmag=pathtemp+'fmag.fits'
 fmagremote='http://sdowww.lmsal.com/sdomedia/SunInTime/mostrecent/fblos.fits'
+fmag='/viz2/media/SunInTime/mostrecent/fblos.fits' ;'/archive/sdo/media/SunInTime/mostrecent/fblos.fits'
 ;spawn,'curl '+fmagremote+' -o '+fmag
 ;spawn,'&/Users/phiggins/bin/wget/src/wget '+fmagremote+' -O '+fmag
 ;wait,600
@@ -44,7 +55,9 @@ mmmotd_getarpos,arposstr,/verb ;verb=verb
 ;Run overlay code
 print,'Running: mmmotd_sunspot_overlay'
 if not debug then outfile=pathoutput+'magintoverlay_'+envdate
+
 mmmotd_sunspot_overlay,fmag,fint,outfile=outfile,arposstr=arposstr,/verb, outarr=outarr
+
 if not debug then begin
 	statusarr=file_exist(outarr)
 	print,outarr+' exist='+strtrim(statusarr,2)
@@ -57,10 +70,30 @@ if not debug then begin
 endif
 
 ;Write and run the FTP image transfer script
-ftpinfofile=pathworking+'ftp_info.txt'
+;ftpinfofile=pathworking+'ftp_info.txt'
 if not debug then begin
+
 	infiles=outarr[where(statusarr eq 1)]
-	mmmotd_ftp_upload,infiles,ftpinfofile;,pathtemp+'ftp_transfer'
+
+spawn,'ls /Users/higgins/science/projects/max_millennium/images/sunspot_overlays/*$date*eps',listeps,/sh
+print,'LISTEPS = ',listeps
+
+if listeps[0] eq '' and n_elements(listeps) eq 1 then begin
+   status=-1
+   print,'EPS files not found!' & message,'EPS files not found!' 
+   return
+end
+
+neps=n_elements(listeps)
+for j=0,neps-1 do begin 
+   print,'convert '+listeps[j]+' '+listeps[j]+'.png'
+   spawn,'convert '+listeps[j]+' '+listeps[j]+'.png' ;,/sh
+endfor
+;        print,'cp '+pathoutput+'*'+envdate+'*.png '+pathlmsal+'/'
+;	spawn,'cp '+pathoutput+'*'+envdate+'*.png '+pathlmsal+'/',/sh
+
+;Can't seem to FTP from LMSAL
+	;mmmotd_ftp_upload,infiles,ftpinfofile;,pathtemp+'ftp_transfer'
 endif
 
 
