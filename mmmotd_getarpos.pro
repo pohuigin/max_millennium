@@ -72,6 +72,27 @@ endif else begin
 ;extract the locations of each AR
 		hglocstr=strmid(rawars,5,6)
 		if verb then print,'HGLOCSTR',hglocstr
+		
+;NMBR LOCATION LO AREA Z LL NN MAG TYPE
+;8126 N22W74 304 0110 DAO 08 07 BETAgammadelta
+
+;extract the lo's
+;lostr=strmid(rawars,12,3)
+
+;extract the areas
+;areastr=strmid(rawars,16,4)
+
+;extract the mcintosh classes
+;mcintoshstr=strlowcase(strmid(rawars,21,3))
+
+;extract the ll's
+;llstr=strmid(rawars,25,2)
+
+;extract the nn's
+;nnstr=strmid(rawars,28,2)
+
+;extract the hale's
+;halestr=strlowcase(strmid(rawars,31,20))
 
 	endelse
 
