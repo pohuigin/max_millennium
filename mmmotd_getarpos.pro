@@ -1,46 +1,61 @@
 ;gets latest AR positions in heliocentric coords.
 ;optionally set: inswpc to a specific remote SWPC AR SRS file URL
-;				 indate to the date (e.g., '1-jan-2003') of the specific SRS file
+;				 indate to the date (e.g., '1-jan-2003') of the specific SRS file (srsarr or )
+;                intxt  to an archive text file to parse (indate not used)
+;                getnar to use the SSW get_nar routine (requires indate to be set)
 pro mmmotd_getarpos, outarpos, $
-	inswpc=inswpc, indate=indate, verb=verb, srsarr=inrawars, getnar=getnar
+	inswpc=inswpc, indate=indate, intxt=intxt, srsarr=inrawars, getnar=getnar, verb=verb
 
 if keyword_set(verb) then verb=1 else verb=0
 
-;read the latest SWPC AR file
-if n_elements(inrawars) lt 1 then begin
-   if not keyword_set(inswpc) then swpcurl='http://www.swpc.noaa.gov/ftpdir/latest/SRS.txt' else swpcurl=inswpc
-   sock_list,swpcurl,rawars
-   doarchive=0
-;spawn,'curl '+swpcurl,rawars,/sh
-endif else begin
-   doarchive=1
-   rawars=inrawars
-endelse
+if not keyword_set(getnar) then begin
+
+	;read the latest SWPC AR file
+	if n_elements(inrawars) lt 1 and n_elements(intxt) lt 1 then begin
+	   if not keyword_set(inswpc) then swpcurl='http://www.swpc.noaa.gov/ftpdir/latest/SRS.txt' else swpcurl=inswpc
+	   sock_list,swpcurl,rawars
+	   doarchive=0
+	;spawn,'curl '+swpcurl,rawars,/sh
+	endif else begin
+	;read archive text file or parse already read file string array
+	   doarchive=1
+	   if n_elements(inrawars) lt 1 then begin
+		  readcol,intxt, rawars, form='A', delim='$&'
+		  if verb then print,'Reading: '+intxt
+		  date=anytim(file2time(intxt),/vms,/date)
+	   endif else rawars=inrawars
+	
+	endelse
+
+endif else doarchive=0
+
+   if verb then print,'doarchive=',doarchive
 
 ;postions valid at time:
-if not keyword_set(indate) then date=anytim(systim(/utc),/date,/vms) else date=indate
+if not keyword_set(indate) and n_elements(date) ne 1 then date=anytim(systim(/utc),/date,/vms)
+if keyword_set(indate) and n_elements(date) ne 1 then  date=indate
+
 datepos=date+' 00:00:00'
 if verb then print,'DATEPOS',datepos
 
 if keyword_set(getnar) then begin
 
-;stop
 	narstr=get_nar(date)
 
-        if data_type(narstr) ne 8 then begin
-           print,'NO NAR FILE FOUND FOR: '+date
-           return
-        endif
+	if data_type(narstr) ne 8 then begin
+	   print,'NO NAR FILE FOUND FOR: '+date
+	   return
+	endif
 
 
-        datepos=anytim(narstr,/vms)
+	datepos=anytim(narstr,/vms)
 	datepos=datepos[0]
 
 	hgarstr=narstr.noaa
 
-        smart_nsew2hg, hglocstr, (narstr.location)[0,*], (narstr.location)[1,*], /inverse
+	smart_nsew2hg, hglocstr, (narstr.location)[0,*], (narstr.location)[1,*], /inverse
 
-        nars=n_elements(narstr)
+	nars=n_elements(narstr)
 
 endif else begin
 
