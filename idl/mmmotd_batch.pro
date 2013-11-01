@@ -22,6 +22,9 @@ pathoutput = getenv('OUTPUT_PATH')
 
 pathlmsal='/sanhome/higgins/public_html/max_millennium/sunspot_overlays/'
 envdate = getenv('todays_date')
+yyyy=strmid(envdate,0,4)
+mm=strmid(envdate,4,2)
+dd=strmid(envdate,6,2)
 
 print, 'Images will be output to: '+pathoutput
 print, 'And copied to: '+pathlmsal
@@ -30,6 +33,7 @@ print, 'And copied to: '+pathlmsal
 ;fint=pathtemp+'fint.fits'
 fintremote='http://sdowww.lmsal.com/sdomedia/SunInTime/mostrecent/f4500.fits'
 fint='/viz2/media/SunInTime/mostrecent/f4500.fits' ;'/archive/sdo/media/SunInTime/mostrecent/f4500.fits'
+fint2='/viz2/media/SunInTime/'+yyyy+'/'+mm+'/'+dd+'/f4500.fits'
 ;spawn,'curl '+fintremote+' -o '+fint
 ;spawn,'&/Users/phiggins/bin/wget/src/wget '+fintremote+' -O '+fint
 ;wait,600
@@ -38,15 +42,26 @@ fint='/viz2/media/SunInTime/mostrecent/f4500.fits' ;'/archive/sdo/media/SunInTim
 ;fmag=pathtemp+'fmag.fits'
 fmagremote='http://sdowww.lmsal.com/sdomedia/SunInTime/mostrecent/fblos.fits'
 fmag='/viz2/media/SunInTime/mostrecent/fblos.fits' ;'/archive/sdo/media/SunInTime/mostrecent/fblos.fits'
+fmag2='/viz2/media/SunInTime/'+yyyy+'/'+mm+'/'+dd+'/fblos.fits'
 ;spawn,'curl '+fmagremote+' -o '+fmag
 ;spawn,'&/Users/phiggins/bin/wget/src/wget '+fmagremote+' -O '+fmag
 ;wait,600
 
-;Check if files downloaded
-existmag=file_exist(fmag) & print,'existmag',existmag
-if existmag ne 1 then message,'MAGNETOGRAM FITS FILE MISSING: '+fmag+' from: '+fmagremote
+;Check if files exist in the 'Latest' directory, locally
 existint=file_exist(fint) & print,'existint',existint
 if existint ne 1 then message,'INTENSITYGRAM FITS FILE MISSING: '+fint+' from: '+fintremote
+existmag=file_exist(fmag) & print,'existmag',existmag
+if existmag ne 1 then message,'MAGNETOGRAM FITS FILE MISSING: '+fmag+' from: '+fmagremote
+
+;If not, then check if files exist in the current date directory, locally
+if not existint then begin
+	existint2=file_exist(fint2)
+	if existint2 then fint=fint2
+endif
+if not existmag then begin
+	existmag2=file_exist(fmag2)
+	if existmag2 then fmag=fmag2
+endif
 
 ;Get AR positions
 print,'Running: mmmotd_getarpos'
@@ -84,11 +99,12 @@ if listeps[0] eq '' and n_elements(listeps) eq 1 then begin
    return
 end
 
-neps=n_elements(listeps)
-for j=0,neps-1 do begin 
-   print,'convert '+listeps[j]+' '+listeps[j]+'.png'
-   spawn,'convert '+listeps[j]+' '+listeps[j]+'.png' ;,/sh
-endfor
+;neps=n_elements(listeps)
+;for j=0,neps-1 do begin 
+;   print,'convert '+listeps[j]+' '+listeps[j]+'.png'
+;   spawn,'convert '+listeps[j]+' '+listeps[j]+'.png' ;,/sh
+;endfor
+
 ;        print,'cp '+pathoutput+'*'+envdate+'*.png '+pathlmsal+'/'
 ;	spawn,'cp '+pathoutput+'*'+envdate+'*.png '+pathlmsal+'/',/sh
 

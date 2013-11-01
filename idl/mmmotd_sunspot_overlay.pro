@@ -74,16 +74,18 @@ print,'yr='+strjoin(strtrim([arhcpos[1]-200.,arhcpos[1]+200.],2),',')
 	
 	;set up buffer plotting
 	if keyword_set(outfile) then begin
-;		set_plot, 'z'
-;		resxy=[1600,800]
+		set_plot, 'z'
+		resxy=[1600,800]
+
 		thisimg=outfile+'_'+strtrim(arposstr[i].ars,2)
 
-		psopen,thisimg+'.eps', $
-                        XSIZE=36, YSIZE=18, /color, /encapsulated
-;		device, set_resolution = resxy;, /color
+		device, set_resolution = resxy, decomp=0, set_pixel_depth=24
+
+;		psopen,thisimg+'.eps', $
+;                       XSIZE=36, YSIZE=18, /color, /encapsulated
 		!p.background = 255
 		!p.color = 0
-		;device,decomp=1
+
 	endif
 	
 	;make plot
@@ -105,23 +107,28 @@ print,'yr='+strjoin(strtrim([arhcpos[1]-200.,arhcpos[1]+200.],2),',')
 	;write the buffer to an image
 	if keyword_set(outfile) then begin
 ;;		tvlct,rr,gg,bb,/get
-;;		zb_plot=tvrd(true=1)
-;		zb1=bytscl(tvrd(channel=1,/words)) & zb2=bytscl(tvrd(channel=2,/words)) & zb3=bytscl(tvrd(channel=3,/words))
-;		zb_plot=bytarr(3,resxy[0],resxy[1])
-;		zb_plot[0,*,*]=zb1 & zb_plot[1,*,*]=zb2 & zb_plot[2,*,*]=zb3
-;		write_png, outfile+'_'+strtrim(arposstr[i].ars,2)+'.png', zb_plot;, rr,gg,bb
-;		zb_plot = tvrd()
+		zb_plot=tvrd(true=1)
+;;		zb1=bytscl(tvrd(channel=1,/words)) & zb2=bytscl(tvrd(channel=2,/words)) & zb3=bytscl(tvrd(channel=3,/words))
+;;		zb_plot=bytarr(3,resxy[0],resxy[1])
+;;		zb_plot[0,*,*]=zb1 & zb_plot[1,*,*]=zb2 & zb_plot[2,*,*]=zb3
 
-		psclose		
-                
- ;               print,'convert -density 200 '+thisimg+'.eps '+thisimg+'.png'
-  ;              spawn,'convert -density 200 '+thisimg+'.eps '+thisimg+'.png',/sh
-;		spawn,'convert -density 300 -resize '+strtrim(fix(round(resxy[0])),2)+'x'+strtrim(fix(round(resxy[1])),2)+' -extent '+strtrim(fix(round(resxy[0])),2)+'x'+strtrim(fix(round(resxy[1])),2)+' '+thisimg+'.eps '+thisimg+'.png'
+		write_png, thisimg+'.png', zb_plot;, rr,gg,bb
 
-;		thisimg=outfile+'_'+strtrim(arposstr[i].ars,2)+'.png'
-;		wr_png, thisimg, zb_plot
+;;		zb_plot = tvrd()
+
+;		psclose		               
+;                print,'convert -density 200 '+thisimg+'.eps '+thisimg+'.png'
+;                spawn,'convert -density 200 '+thisimg+'.eps '+thisimg+'.png',/sh
+;                spawn,'convert '+thisimg+'.png -resize 10% '+thisimg+'.thumb.png'
+
+;;		thisimg=outfile+'_'+strtrim(arposstr[i].ars,2)+'.png'
+;;		wr_png, thisimg, zb_plot
 ;stop
-;		set_plot, 'x'
+
+;Make thumbnail images
+               	write_png, thisimg+'.thumb.png', congrid(zb_plot,3.,200.,200.*resxy[1]/resxy[0])
+
+		set_plot, 'x'
 		if n_elements(outarr) lt 1 then outarr=thisimg else outarr=[outarr,thisimg+'.png']
 	endif else stop
 	

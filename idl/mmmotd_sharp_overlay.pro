@@ -32,9 +32,12 @@ for i=0,nf-1 do begin
 
    if verb then help,mdat,idat,bdat
 
-   mindex2map,mind,mdat,mmap
-   mindex2map,iind,idat,imap
-   mindex2map,bind,bdat,bmap
+;   mindex2map,mind,mdat,mmap
+;   mindex2map,iind,idat,imap
+;   mindex2map,bind,bdat,bmap
+   index2map,mind,mdat,mmap
+   index2map,iind,idat,imap
+   index2map,bind,bdat,bmap
 
 ;determine WL statistical moments
    medint=median(idat)
@@ -61,44 +64,49 @@ for i=0,nf-1 do begin
 		thisimg=outfile+'_'+strtrim(arlist[i],2)
                 
                 imgsz=float(size(idat,/dim))
-                ysize=(imgsz[1]/imgsz[0])*54./3.
+;               ysize=(imgsz[1]/imgsz[0])*54./3.
+
+		set_plot, 'z'
+		resxy=[(imgsz[0]*3)*1.2,imgsz[1]*1.2]
+
+		device, set_resolution = resxy, decomp=0, set_pixel_depth=24
+
+;		psopen,thisimg+'.eps', $
+;                       XSIZE=48., YSIZE=ysize, /color, /encapsulated
 
                 !p.color=0
                 !p.background=255
 
-		psopen,thisimg+'.eps', $
-                        XSIZE=48., YSIZE=ysize, /color, /encapsulated
-
+                thischars=1.5*(resxy[1]/250.)
+                thischarthick=1.5*(resxy[1]/250.)
    endif
 
    !p.multi=[0,3,1]
    loadct,0 
 
-   plot_map,mmap,drange=[-500,500]
+   plot_map,mmap,drange=[-500,500],chars=thischars
 
-   xyouts,0.05,0.15,strtrim(arlist[i],2),color=0,/norm,chars=1.5,charthick=2
+   xyouts,0.05,0.15,strtrim(arlist[i],2),color=0,/norm,chars=thischars,charthick=thischarthick
+   xyouts,0.25,0.15,'BLOS',color=0,/norm,chars=thischars,charthick=thischarthick
+   xyouts,0.05,0.75,'LAT:'+strtrim(arlat[i],2)+' , LON:'+strtrim(arlon[i],2),color=0,/norm,chars=thischars,charthick=thischarthick
 
-   xyouts,0.25,0.15,'BLOS',color=0,/norm,chars=1.5,charthick=2
+   plot_map,imap, dran=idran,chars=thischars
 
-   xyouts,0.05,0.75,'LAT:'+strtrim(arlat[i],2)+' , LON:'+strtrim(arlon[i],2),color=0,/norm,chars=1.5,charthick=2
-
-   plot_map,imap, dran=idran
-
-   xyouts,0.56,0.15,'IGRAM',color=0,/norm,chars=1.5,charthick=2
+   xyouts,0.56,0.15,'IGRAM',color=0,/norm,chars=thischars,charthick=thischarthick
 
    setcolors,/sys
-   plot_map,bmap,level=[500,1000],color=!red,/over
-   plot_map,bmap,level=[-1000,-500],color=!blue,/over
+   plot_map,bmap,level=[500,1000],color=!red,/over,chars=thischars
+   plot_map,bmap,level=[-1000,-500],color=!blue,/over,chars=thischars
    
    loadct,0
-   plot_map,bmap,drange=[-500,500]
+   plot_map,bmap,drange=[-500,500],chars=thischars
 
-   xyouts,0.85,0.15,'BRAD',color=0,/norm,chars=1.5,charthick=2
+   xyouts,0.85,0.15,'BRAD',color=0,/norm,chars=thischars,charthick=thischarthick
 
    setcolors,/sys
 
-   plot_map,imap,level=threshumb,color=!red,/over
-   plot_map,imap,level=threshpen,color=!blue,/over
+   plot_map,imap,level=threshumb,color=!red,/over,chars=thischars
+   plot_map,imap,level=threshpen,color=!blue,/over,chars=thischars
 
 
 
@@ -106,13 +114,24 @@ for i=0,nf-1 do begin
 
 ;   plot_map,imap,level=0.85*median(imap.data),color=!blue,/over
 
-   if n_elements(outfile) eq 1 then begin
+   if n_elements(outfile) gt 0 then begin
    
-   		psclose		
- ;               print,'convert -density 150 '+thisimg+'.eps '+thisimg+'.png'
-  ;              spawn,'convert -density 150 '+thisimg+'.eps '+thisimg+'.png',/sh
+;   		psclose		
+;                print,'convert -density 200 '+thisimg+'.eps '+thisimg+'.png'
+;                spawn,'convert -density 200 '+thisimg+'.eps '+thisimg+'.png',/sh
+;                spawn,'convert '+thisimg+'.png -resize 10% '+thisimg+'.thumb.png',/sh
+
+		zb_plot=tvrd(true=1)
+
+		write_png, thisimg+'.png', zb_plot;, rr,gg,bb
+;                spawn,'convert '+thisimg+'.png -resize 10% '+thisimg+'.thumb.png'
 
                 outpngs[i]=thisimg+'.png'
+
+;Make thumbnail images
+               	write_png, thisimg+'.thumb.png', congrid(zb_plot,3.,200.,200.*resxy[1]/resxy[0])
+
+		set_plot, 'x'
 
    endif
    
