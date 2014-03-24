@@ -1,0 +1,10 @@
+#Parameters for RUN_OBS.pro and the associated routines 
+#
+#Parameter; Value; Type; Comment
+#
+flarelocdir; ~/science/projects/max_millennium/data/aia_synop/; A; root directory for OBS_FLARE stuff
+flarewave1; 1600; A; wavelength to search for 
+flarewave2; 0131; A; wavelength to search for 
+#
+halphaobskey; Bh; A; oobservatory key to search for data
+halphalocdir; ~/science/projects/max_millennium/data/gonghalpha_synop/; A; local directory to save halpha data
