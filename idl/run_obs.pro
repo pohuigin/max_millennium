@@ -1,10 +1,20 @@
 ;Make a real-time plot of the GOES light curve
 ;Also plot EVE?
 
-pro obs_flares
+pro obs_flares,params=params, default=default,refreshparam=refreshparam
 
 wset,0
 !p.multi=0
+
+if data_type(params) ne 8 and not keyword_set(default) then params=ar_loadparam(fparam='mmmotd_obs_param.txt')
+
+if keyword_set(refreshparam) then params=ar_loadparam(fparam='mmmotd_obs_param.txt')
+
+if not keyword_set(default) then begin
+	pminmax=[params.flaremin,params.flaremax]
+endif else begin
+	pminmax=[1d-7,1d-5]
+endelse
 
 ;Set goes data file location
 fname='Gp_xr_1m.txt'
@@ -36,10 +46,15 @@ tshift=0. ;anytim(systim())-anytim(systim(/utc))
 
 ;Plot the data
 mint=min(tim)+tshift
-utplot,tim-mint,ilong,mint,ps=4,/ylog,chars=2,lines=2,xtit='Last Datum: '+(reverse(hhmm))[0] ;,yran=[1d-7,1d-3]
-oplot,tim-mint,ishort+1d-7,color=150
+wbad=where(ilong lt 1d-8 or finite(ilong) ne 1)
+if wbad[0] ne -1 then ilong[wbad]=1d-8
+utplot,tim-mint,ilong,mint,ps=4,/ylog,chars=2,lines=2,xtit='Last Datum: '+(reverse(hhmm))[0],yran=pminmax
+oplot,tim-mint,ishort+pminmax[0],color=150
 hline,[1d-4,1d-5,1d-6,1d-7]
-xyouts,60.*20.,[1d-4,1d-5,1d-6],['X','M','C'],/data
+xyouts,60.*20.,[1d-4,1d-5,1d-6],['X','M','C'],/data,chars=2
+
+maxflux=max(ilong)
+xyouts,0.01,0.01,'Max(GOES): '+strtrim(string(maxflux,form='(E10.3)'),2),/norm,chars=2
 
 vline, anytim(systim(/utc)), lines=2,color=150,/ylog
 
@@ -47,17 +62,20 @@ end
 
 ;----------------------------------------------------------------------------->
 
-pro obs_euv,arpos,params=params, default=default
+pro obs_euv,arpos,params=params, default=default,refreshparam=refreshparam
 
 wset,2
 ;!p.multi=[0,2,2]
 
 if data_type(params) ne 8 and not keyword_set(default) then params=ar_loadparam(fparam='mmmotd_obs_param.txt')
 
+if keyword_set(refreshparam) then params=ar_loadparam(fparam='mmmotd_obs_param.txt')
+
 if not keyword_set(default) then begin
 	locdir=params.flarelocdir
 	wave1=params.flarewave1
 	wave2=params.flarewave2
+	pminmax=[params.flaremin,params.flaremax]
 endif else begin
 	locdir='~/science/projects/max_millennium/data/aia_synop/'
 	wave1='1600'
@@ -130,7 +148,7 @@ xyouts,0.1,0.1,'131A: '+strmid(t131[1],11,10)+' - '+strmid(t131[0],11,10),/norm
 if n_elements(arpos) gt 0 then xyouts,(arpos.hcpos)[0,*],(arpos.hcpos)[1,*],arpos.ars,/data
 
 map131_2=map
-map131_2.data=(ar_grow(arr131[*,*,2],rad=5,/gaus)-ar_grow(arr131[*,*,1],rad=5,/gaus))/ar_grow(arr131[*,*,1],rad=5,/gaus)
+map131_2.data=(ar_grow(arr131[*,*,2],rad=5,/gaus)-ar_grow(arr131[*,*,0],rad=5,/gaus))/ar_grow(arr131[*,*,0],rad=5,/gaus)
 plot_map,map131_2,dran=[-0.5,0.5],/limb,grid=10,fov=33,position=[0.5,0,1,1],/noerase,xtit='',ytit='',tit=''
 
 xyouts,0.5,0.1,'131A: '+strmid(t131[2],11,10)+' - '+strmid(t131[1],11,10),/norm
@@ -153,17 +171,23 @@ end
 
 ;----------------------------------------------------------------------------->
 
-pro obs_halpha,arpos,params=params,default=default
+pro obs_halpha,arpos,params=params,default=default, refreshparam=refreshparam
 
 wset,3
 ;!p.multi=[0,2,1]
 
 if data_type(params) ne 8 and not keyword_set(default) then params=ar_loadparam(fparam='mmmotd_obs_param.txt')
 
+if keyword_set(refreshparam) then params=ar_loadparam(fparam='mmmotd_obs_param.txt')
+
 if not keyword_set(default) then begin
 	obskey=params.halphaobskey
 	locdir=params.halphalocdir
+	diffminmax=params.halphadiffminmax
+	smpx=params.halphasmooth
 endif else begin
+	diffminmax=100
+	smpx=10
 	obskey='Bh'
 	locdir='~/science/projects/max_millennium/data/gonghalpha_synop/'
 endelse
@@ -174,17 +198,20 @@ yyyy=strmid(date,0,4)
 mo=strmid(date,4,2)
 dd=strmid(date,6,2)
 
-;Get EVE centroid
-feve='http://lasp.colorado.edu/eve/data_access/evewebdata/quicklook/L0CS/LATEST15m_EVE_L0CS_DIODES_1m.txt'
+;Get EVE/SAM centroid
+feve='http://lasp.colorado.edu/eve/data_access/evewebdata/quicklook/latest_sam_ci.txt'
+
 fname=(reverse(str_sep(feve,'/')))[0]
 
 ;Download the EVE data
 spawn,'curl -O '+feve,/sh
 
 ;Read EVE data
-readcol,fname,xrhh,xrprox,xrlat,xrlon,form='A,A,X,X,X,X,X,X,X,X,X,X,X,X,X,X,A,A',comment=';'
 
-nline=n_elements(xrlat)
+readcol,fname,xrhh,xrmm,xrxpx,xrypx,xrlatlon,xrprox,form='X,X,X,A,A,X,X,X,X,X,X,X,F,F,A,A',comment=';'
+smart_nsew2hg, xrlatlon, xrlat, xrlon
+
+nline=n_elements(xrhh)
 hcpos=fltarr(2,nline)
 for n=0,nline-1 do hcpos[*,n]=hel2arcmin(xrlat[n],xrlon[n],date=tim)
 
@@ -209,7 +236,7 @@ for i=0,2 do begin
 		fdl=(reverse(str_sep(flast[i],'/')))[0]
 		spawn,'mv '+fdl+' '+floc,/sh
 
-		spawn,'funpack '+floc,fpackstatus
+		spawn,'funpack '+floc,fpackstatus,/sh
 	endif
 
 
@@ -230,33 +257,36 @@ map_1=map
 ;map_1.data=(ar_grow(arrdat[*,*,1],rad=5,/gaus)-ar_grow(arrdat[*,*,0],rad=5,/gaus))/ar_grow(arrdat[*,*,0],rad=5,/gaus)
 ;plot_map,map_1,dran=[-0.5,0.5],/limb,grid=10,fov=33,position=[0,0,0.33,1],xtit='',ytit='',tit=''
 
-map_1.data=maparr[1].data-maparr[0].data
-plot_map,map_1,/limb,grid=10,fov=33,position=[0,0,0.33,1],xtit='',ytit='',tit='',dran=[-250,250]
+map_1.data=smooth(maparr[2].data,[smpx,smpx])-smooth(maparr[0].data,[smpx,smpx])
+plot_map,map_1,/limb,grid=10,fov=33,position=[0,0,0.33,1],xtit='',ytit='',tit='',dran=[-diffminmax,diffminmax]
 
 if n_elements(arpos) gt 0 then xyouts,(arpos.hcpos)[0,*],(arpos.hcpos)[1,*],arpos.ars,/data
 
-xyouts,0.01,0.05,strmid(tlast[1],9,4)+' - '+strmid(tlast[0],9,4),/norm
+xyouts,0.01,0.05,strmid(tlast[2],9,4)+' - '+strmid(tlast[0],9,4),/norm
 
 map_2=map
 ;map_2.data=(ar_grow(arrdat[*,*,2],rad=5,/gaus)-ar_grow(arrdat[*,*,1],rad=5,/gaus))/ar_grow(arrdat[*,*,1],rad=5,/gaus)
 ;plot_map,map_2,dran=[-0.5,0.5],/limb,grid=10,fov=33,position=[0.33,0,.66,1],xtit='',ytit='',tit='',/noerase
 
-map_2.data=maparr[2].data-maparr[1].data
-plot_map,map_2,/limb,grid=10,fov=33,position=[0.33,0,0.66,1],xtit='',ytit='',tit='',/noerase,dran=[-250,250]
+map_2.data=smooth(maparr[2].data,[smpx,smpx])-smooth(maparr[1].data,[smpx,smpx])
+plot_map,map_2,/limb,grid=10,fov=33,position=[0.33,0,0.66,1],xtit='',ytit='',tit='',/noerase,dran=[-diffminmax,diffminmax]
 
 if n_elements(arpos) gt 0 then xyouts,(arpos.hcpos)[0,*],(arpos.hcpos)[1,*],arpos.ars,/data
 
 xyouts,0.34,0.05,strmid(tlast[2],9,4)+' - '+strmid(tlast[1],9,4),/norm
 
 plot_map,maparr[2],/limb,grid=10,fov=33,position=[0.66,0,1,1],xtit='',ytit='',tit='',/noerase;,dran=[3000,4000]
-plots,hcpos[0,*],hcpos[1,*],ps=1
-plots,(reverse(hcpos[0,*]))[0],(reverse(hcpos[1,*]))[0],ps=4
+plots,hcpos[0,*],hcpos[1,*],ps=1,color=0
+;plots,(reverse(hcpos[0,*]))[0],(reverse(hcpos[1,*]))[0],ps=4
+draw_circle,(reverse(hcpos[0,*]))[0],(reverse(hcpos[1,*]))[0],50,/data
 
 if n_elements(arpos) gt 0 then xyouts,(arpos.hcpos)[0,*],(arpos.hcpos)[1,*],arpos.ars,/data
 
 xyouts,0.67,0.05,strmid(tlast[2],9,4),/norm
 
 xyouts,0.67,0.95,'EVE Lon,Lat: '+strtrim(fix(round(float((reverse(xrlon))[0]))),2)+','+strtrim(fix(round(fix((reverse(xrlat))[0]))),2),/norm
+
+xyouts,0.01,0.95,obskey,/norm,chars=2 
 
 end
 

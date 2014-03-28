@@ -5,6 +5,10 @@
 flarelocdir; ~/science/projects/max_millennium/data/aia_synop/; A; root directory for OBS_FLARE stuff
 flarewave1; 1600; A; wavelength to search for 
 flarewave2; 0131; A; wavelength to search for 
+flaremin; 1d-7; F; minimum flare intensity to plot 
+flaremax; 1d-5; F; maximum flare intensity to plot 
 #
 halphaobskey; Bh; A; oobservatory key to search for data
 halphalocdir; ~/science/projects/max_millennium/data/gonghalpha_synop/; A; local directory to save halpha data
+halphadiffminmax; 200; F; min max display value for difference images
+halphasmooth; 20; F; number of pixels to smooth by when making difference images
